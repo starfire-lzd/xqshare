@@ -19,7 +19,7 @@ ENV_FORMAT = "XQSHARE_FORMAT"
 
 
 @contextmanager
-def create_client(host=None, port=None, secret=None, client_id=None, quiet=True):
+def create_client(host=None, port=None, secret=None, client_id=None, quiet=True, use_tailscale=None):
     """创建客户端连接
 
     Args:
@@ -36,8 +36,10 @@ def create_client(host=None, port=None, secret=None, client_id=None, quiet=True)
     p = port or int(os.environ.get(ENV_PORT, "18812"))
     s = secret or os.environ.get(ENV_SECRET)
     cid = client_id or os.environ.get(ENV_CLIENT_ID, "client-standard")
+    if use_tailscale is None:
+        use_tailscale = os.environ.get("XQSHARE_TAILSCALE", "").lower() in ("1", "true", "yes", "on")
 
-    xt = XtQuantRemote(host=h, port=p, client_id=cid, client_secret=s)
+    xt = XtQuantRemote(host=h, port=p, client_id=cid, client_secret=s, use_tailscale=use_tailscale)
     try:
         yield xt
     finally:
@@ -47,6 +49,7 @@ def create_client(host=None, port=None, secret=None, client_id=None, quiet=True)
 # 已知的全局参数（不应传递给 API）
 GLOBAL_ARGS = {
     'host', 'port', 'secret', 'client_id',
+    'tailscale',
     'limit', 'n', 'verbose', 'v',
     'output', 'o', 'format', 'f', 'compact',
     'userdata_path', 'account_id', 'account_type',
@@ -61,7 +64,7 @@ GLOBAL_ARGS_WITH_VALUE = {
 
 # 标志型全局参数（无值，布尔类型）
 GLOBAL_ARGS_FLAG = {
-    'verbose', 'v', 'compact',
+    'verbose', 'v', 'compact', 'tailscale',
 }
 
 
@@ -391,6 +394,7 @@ def add_global_args(parser):
     parser.add_argument("--port", type=int, help="服务端端口，可通过 XQSHARE_REMOTE_PORT 环境变量设置")
     parser.add_argument("--secret", help="认证密钥，可通过 XQSHARE_CLIENT_SECRET 环境变量设置")
     parser.add_argument("--client-id", dest="client_id", help="客户端标识，可通过 XQSHARE_CLIENT_ID 环境变量设置")
+    parser.add_argument("--tailscale", action="store_true", help="自动启动 Tailscale 客户端 sidecar")
     parser.add_argument("--limit", "-n", type=int, default=50, help="列表输出数量限制 (默认: 50，0 表示不限制)")
     parser.add_argument("--verbose", "-v", action="store_true", help="显示详细日志")
     parser.add_argument("--output", "-o", help="输出文件路径")

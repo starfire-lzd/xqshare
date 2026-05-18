@@ -66,4 +66,4 @@ where = ["."]
 include = ["xqshare*"]
 
 [tool.setuptools.package-data]
-"*" = ["*.md", "*.txt"]
+"xqshare" = ["bin/*", "*.md", "*.txt"]

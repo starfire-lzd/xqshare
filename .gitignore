@@ -69,6 +69,12 @@ Thumbs.db
 # Project specific
 logs/
 *.log
+.tools/
+tailscale-proxy/tsnet-state/
+tailscale-proxy/tsnet-state-client/
+tailscale-proxy/bin/
+tailscale-proxy/xqshare-tailscale-proxy.exe
+tailscale-proxy/xqshare-tailscale-proxy
 
 # Secrets (never commit these!)
 secrets/

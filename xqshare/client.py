@@ -314,6 +314,7 @@ class XtQuantRemote:
         heartbeat_interval=30,
         log_level="INFO",
         env_file=None,
+        use_tailscale=None,
     ):
         # 加载环境变量文件（None 时自动查找 .env）
         try:
@@ -331,6 +332,15 @@ class XtQuantRemote:
             client_id = os.environ.get("XQSHARE_CLIENT_ID", DEFAULT_CLIENT_ID)
         if client_secret is None:
             client_secret = os.environ.get("XQSHARE_CLIENT_SECRET", DEFAULT_CLIENT_SECRET)
+        if use_tailscale is None:
+            use_tailscale = os.environ.get("XQSHARE_TAILSCALE", "").lower() in ("1", "true", "yes", "on")
+
+        self._tunnel = None
+        if use_tailscale:
+            from .tunnel import start_client_tunnel
+            self._tunnel = start_client_tunnel(host, port)
+            host = os.environ.get("XQSHARE_TS_LOCAL_HOST", "127.0.0.1")
+            port = int(os.environ.get("XQSHARE_TS_LOCAL_PORT", str(port)))
 
         self._host = host
         self._port = port
@@ -595,6 +605,9 @@ class XtQuantRemote:
             except:
                 pass
         self._conn = None
+        if self._tunnel:
+            self._tunnel.stop()
+            self._tunnel = None
         self._logger.info("连接已关闭")
     
     def __enter__(self):

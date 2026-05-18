@@ -67,6 +67,8 @@ def main():
             args.limit = int(global_overrides.get('limit') or global_overrides.get('n', 0))
         if 'format' in global_overrides or 'f' in global_overrides:
             output_format = global_overrides.get('format') or global_overrides.get('f')
+        if 'tailscale' in global_overrides:
+            args.tailscale = True
 
     # 拒绝订阅相关命令
     if args.command.startswith('subscribe'):
@@ -74,7 +76,8 @@ def main():
         print("提示: 订阅功能需要回调函数支持，请使用 Python API 或 examples 脚本", file=sys.stderr)
         sys.exit(1)
 
-    with create_client(args.host, args.port, args.secret, args.client_id, quiet=not args.verbose) as xt:
+    with create_client(args.host, args.port, args.secret, args.client_id,
+                       quiet=not args.verbose, use_tailscale=args.tailscale) as xt:
         func = getattr(xt.xtdata, args.command, None)
         if func is None:
             print(f"错误: 未知命令 '{args.command}'", file=sys.stderr)

@@ -595,7 +595,8 @@ def create_ssl_context(certfile=None, keyfile=None):
     return ctx
 
 
-def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfile=None, log_level="INFO", env_file=None):
+def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfile=None,
+                 log_level="INFO", env_file=None, use_tailscale=False):
     """启动服务
 
     Args:
@@ -616,6 +617,7 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
 
     if port is None:
         port = int(os.environ.get("XQSHARE_PORT", "18812"))
+    use_tailscale = use_tailscale or os.environ.get("XQSHARE_TAILSCALE", "").lower() in ("1", "true", "yes", "on")
 
     if not XTQUANT_AVAILABLE:
         print("错误: xtquant 库未安装，请先安装 xtquant")
@@ -629,6 +631,7 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
     print("=" * 70)
     print(f"  监听地址: {host}:{port}")
     print(f"  SSL 加密: {'启用' if use_ssl else '禁用'}")
+    print(f"  Tailscale: {'启用' if use_tailscale else '禁用'}")
     print(f"  日志级别: {log_level}")
     print("=" * 70)
     
@@ -636,7 +639,13 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
     if XtQuantService._permission_checker is None:
         XtQuantService._permission_checker = get_permission_checker()
 
-    logger.info(f"服务启动 | host={host} | port={port} | ssl={use_ssl}")
+    logger.info(f"服务启动 | host={host} | port={port} | ssl={use_ssl} | tailscale={use_tailscale}")
+    tunnel = None
+    if use_tailscale:
+        from .tunnel import start_server_tunnel
+        tunnel = start_server_tunnel(host, port)
+        logger.info("Tailscale sidecar 启动成功")
+        print("  Tailscale sidecar 已启动并加入 tailnet")
     
     config = {
         'allow_public_attrs': True,
@@ -701,6 +710,9 @@ def start_server(host="0.0.0.0", port=None, use_ssl=False, certfile=None, keyfil
     except Exception as e:
         logger.error(f"服务异常: {e}")
         raise
+    finally:
+        if tunnel is not None:
+            tunnel.stop()
 
 
 def main():
@@ -721,24 +733,30 @@ def main():
   QMT_USERDATA_PATH QMT userdata_mini 目录路径
         """
     )
-    parser.add_argument("--host", default="0.0.0.0", help="监听地址 (默认: 0.0.0.0)")
+    parser.add_argument("--host", default=None, help="监听地址 (默认: 0.0.0.0；Tailscale 模式默认 127.0.0.1)")
     parser.add_argument("--port", type=int, default=None, help="监听端口 (默认: 18812 或 XQSHARE_PORT)")
     parser.add_argument("--ssl", action="store_true", help="启用 SSL 加密")
     parser.add_argument("--cert", help="SSL 证书文件")
     parser.add_argument("--key", help="SSL 私钥文件")
     parser.add_argument("--log-level", default="INFO", help="日志级别 (默认: INFO)")
     parser.add_argument("--env-file", default=".env", help="环境变量文件 (默认: .env)")
+    parser.add_argument("--tailscale", action="store_true", help="自动启动 Tailscale tsnet sidecar")
 
     args = parser.parse_args()
+    use_tailscale = args.tailscale or os.environ.get("XQSHARE_TAILSCALE", "").lower() in ("1", "true", "yes", "on")
+    host = args.host
+    if host is None:
+        host = "127.0.0.1" if use_tailscale else "0.0.0.0"
 
     start_server(
-        host=args.host,
+        host=host,
         port=args.port,
         use_ssl=args.ssl,
         certfile=args.cert,
         keyfile=args.key,
         log_level=args.log_level,
-        env_file=args.env_file
+        env_file=args.env_file,
+        use_tailscale=use_tailscale
     )
 
 
