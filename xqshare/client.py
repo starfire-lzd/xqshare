@@ -336,11 +336,20 @@ class XtQuantRemote:
             use_tailscale = os.environ.get("XQSHARE_TAILSCALE", "").lower() in ("1", "true", "yes", "on")
 
         self._tunnel = None
+        self._managed_tunnel = False
         if use_tailscale:
-            from .tunnel import start_client_tunnel
-            self._tunnel = start_client_tunnel(host, port)
-            host = os.environ.get("XQSHARE_TS_LOCAL_HOST", "127.0.0.1")
-            port = int(os.environ.get("XQSHARE_TS_LOCAL_PORT", str(port)))
+            use_daemon = os.environ.get("XQSHARE_TS_DAEMON", "1").lower() in ("1", "true", "yes", "on")
+            if use_daemon:
+                from .tunnel import ensure_client_tunnel
+                endpoint = ensure_client_tunnel(host, port)
+                host = endpoint.host
+                port = endpoint.port
+                self._managed_tunnel = True
+            else:
+                from .tunnel import start_client_tunnel
+                self._tunnel = start_client_tunnel(host, port)
+                host = os.environ.get("XQSHARE_TS_LOCAL_HOST", "127.0.0.1")
+                port = int(os.environ.get("XQSHARE_TS_LOCAL_PORT", str(port)))
 
         self._host = host
         self._port = port
@@ -605,10 +614,13 @@ class XtQuantRemote:
             except:
                 pass
         self._conn = None
-        if self._tunnel:
+        if self._tunnel and not self._managed_tunnel:
             self._tunnel.stop()
             self._tunnel = None
-        self._logger.info("连接已关闭")
+        if self._managed_tunnel:
+            self._logger.info("客户端连接已关闭，Tailscale 常驻代理保持运行")
+        else:
+            self._logger.info("连接已关闭")
     
     def __enter__(self):
         return self

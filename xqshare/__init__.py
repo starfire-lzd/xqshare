@@ -20,6 +20,12 @@ from .client import (
     AuthenticationError,
     CallbackError,
 )
+from .tunnel import (
+    TailscaleTunnelEndpoint,
+    ensure_client_tunnel,
+    get_client_tunnel_status,
+    stop_client_tunnel,
+)
 
 __all__ = [
     "XtQuantRemote",
@@ -33,4 +39,8 @@ __all__ = [
     "ConnectionError",
     "AuthenticationError",
     "CallbackError",
+    "TailscaleTunnelEndpoint",
+    "ensure_client_tunnel",
+    "get_client_tunnel_status",
+    "stop_client_tunnel",
 ]

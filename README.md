@@ -73,6 +73,30 @@ export XQSHARE_REMOTE_HOST="192.168.1.100"
 xtdata get_stock_list_in_sector --sector-name "沪深A股" --limit 10
 ```
 
+### Tailscale 客户端常驻代理
+
+启用 Tailscale 自动模式后，客户端会优先复用本机常驻代理；如果 `127.0.0.1:18812` 没有代理监听，会自动在后台启动一次，后续 `xtdata`、`xttrader` 和 Python 程序都会直接复用。
+
+```bash
+export XQSHARE_TAILSCALE=1
+export XQSHARE_REMOTE_HOST=xqshare-server
+export XQSHARE_REMOTE_PORT=18812
+
+# 第一次会按需启动后台 sidecar，之后直接复用
+xtdata get_stock_list_in_sector --sector-name "沪深A股"
+```
+
+常用管理命令：
+
+```bash
+xqshare-tunnel status
+xqshare-tunnel start --host xqshare-server --port 18812
+xqshare-tunnel restart
+xqshare-tunnel stop
+```
+
+默认常驻模式由 `XQSHARE_TS_DAEMON=1` 启用。需要临时回到旧的“随客户端进程启动/关闭”行为时，可设置 `XQSHARE_TS_DAEMON=0`。
+
 ---
 
 ## 命令行工具
@@ -359,6 +383,19 @@ xt = XtQuantRemote("192.168.1.100", log_level="DEBUG")
 | log_level | 日志级别 | INFO |
 | callback_port | 回调服务器端口 | 0(自动) |
 
+### Tailscale 环境变量
+
+| 环境变量 | 说明 | 默认值 |
+|------|------|--------|
+| XQSHARE_TAILSCALE | 客户端启用 Tailscale sidecar | 关闭 |
+| XQSHARE_TS_DAEMON | 客户端 sidecar 后台常驻并跨进程复用 | 1 |
+| XQSHARE_TS_DAEMON_DIR | 常驻代理 pid/status/lock 目录 | 用户级状态目录 |
+| XQSHARE_TS_LOCAL_HOST | 客户端本地监听地址 | 127.0.0.1 |
+| XQSHARE_TS_LOCAL_PORT | 客户端本地监听端口 | XQSHARE_REMOTE_PORT |
+| XQSHARE_TS_TARGET_HOST | tailnet 目标主机 | XQSHARE_REMOTE_HOST |
+| XQSHARE_TS_TARGET_PORT | tailnet 目标端口 | XQSHARE_REMOTE_PORT |
+| XQSHARE_TS_STATE_DIR | tsnet 身份状态目录 | 用户级状态目录 |
+
 ### 服务端参数
 
 | 参数 | 说明 | 默认值 |
@@ -594,6 +631,9 @@ tail -f logs/api_calls_*.log
 
 # 客户端
 tail -f logs/client_*.log
+
+# Tailscale 客户端常驻代理
+xqshare-tunnel status
 ```
 
 ### 连接失败
@@ -602,6 +642,10 @@ tail -f logs/client_*.log
 # 检查网络
 ping 192.168.1.100
 telnet 192.168.1.100 18812
+
+# Tailscale 模式下检查本机代理
+xqshare-tunnel status
+xqshare-tunnel restart
 ```
 
 ### 查看服务状态

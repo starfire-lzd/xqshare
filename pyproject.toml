@@ -52,6 +52,7 @@ dev = [
 
 [project.scripts]
 xqshare-server = "xqshare.server:main"
+xqshare-tunnel = "xqshare.tunnel:main"
 xtdata = "xqshare.tools.xtdata:main"
 xttrader = "xqshare.tools.xttrader:main"
 
